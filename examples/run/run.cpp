@@ -29,6 +29,7 @@
 #include "json.hpp"
 #include "linenoise.cpp/linenoise.h"
 #include "llama-cpp.h"
+#include "llama-impl.h"
 #include "log.h"
 
 #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__)) || defined(_WIN32)
@@ -37,24 +38,6 @@
     exit(0);  // not ideal, but it's the only way to guarantee exit in all cases
 }
 #endif
-
-GGML_ATTRIBUTE_FORMAT(1, 2)
-static std::string fmt(const char * fmt, ...) {
-    va_list ap;
-    va_list ap2;
-    va_start(ap, fmt);
-    va_copy(ap2, ap);
-    const int size = vsnprintf(NULL, 0, fmt, ap);
-    GGML_ASSERT(size >= 0 && size < INT_MAX); // NOLINT
-    std::string buf;
-    buf.resize(size);
-    const int size2 = vsnprintf(const_cast<char *>(buf.data()), buf.size() + 1, fmt, ap2);
-    GGML_ASSERT(size2 == size);
-    va_end(ap2);
-    va_end(ap);
-
-    return buf;
-}
 
 GGML_ATTRIBUTE_FORMAT(1, 2)
 static int printe(const char * fmt, ...) {
@@ -445,11 +428,11 @@ class HttpClient {
         int secs = static_cast<int>(seconds) % 60;
 
         if (hrs > 0) {
-            return fmt("%dh %02dm %02ds", hrs, mins, secs);
+            return format("%dh %02dm %02ds", hrs, mins, secs);
         } else if (mins > 0) {
-            return fmt("%dm %02ds", mins, secs);
+            return format("%dm %02ds", mins, secs);
         } else {
-            return fmt("%ds", secs);
+            return format("%ds", secs);
         }
     }
 
@@ -464,7 +447,7 @@ class HttpClient {
             }
         }
 
-        return fmt("%.2f %s", dbl_size, suffix[i]);
+        return format("%.2f %s", dbl_size, suffix[i]);
     }
 
     static int update_progress(void * ptr, curl_off_t total_to_download, curl_off_t now_downloaded, curl_off_t,
@@ -498,7 +481,9 @@ class HttpClient {
         return (now_downloaded_plus_file_size * 100) / total_to_download;
     }
 
-    static std::string generate_progress_prefix(curl_off_t percentage) { return fmt("%3ld%% |", static_cast<long int>(percentage)); }
+    static std::string generate_progress_prefix(curl_off_t percentage) {
+        return format("%3ld%% |", static_cast<long int>(percentage));
+    }
 
     static double calculate_speed(curl_off_t now_downloaded, const std::chrono::steady_clock::time_point & start_time) {
         const auto                          now             = std::chrono::steady_clock::now();
@@ -509,9 +494,9 @@ class HttpClient {
     static std::string generate_progress_suffix(curl_off_t now_downloaded_plus_file_size, curl_off_t total_to_download,
                                                 double speed, double estimated_time) {
         const int width = 10;
-        return fmt("%*s/%*s%*s/s%*s", width, human_readable_size(now_downloaded_plus_file_size).c_str(), width,
-                   human_readable_size(total_to_download).c_str(), width, human_readable_size(speed).c_str(), width,
-                   human_readable_time(estimated_time).c_str());
+        return format("%*s/%*s%*s/s%*s", width, human_readable_size(now_downloaded_plus_file_size).c_str(), width,
+                      human_readable_size(total_to_download).c_str(), width, human_readable_size(speed).c_str(), width,
+                      human_readable_time(estimated_time).c_str());
     }
 
     static int calculate_progress_bar_width(const std::string & progress_prefix, const std::string & progress_suffix) {
